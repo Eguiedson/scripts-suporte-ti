@@ -60,7 +60,7 @@ try {
     Registrar "Log do sistema ($HorasDeLog h)" $sit "$qtd erro(s); mais frequente: $($maisComum.Name)"
 } catch {
     # Get-WinEvent lança erro quando não há nenhum evento no filtro: isso é bom sinal.
-    if ($_.Exception.Message -match 'No events were found|Nenhum evento') {
+    if ($_.FullyQualifiedErrorId -like 'NoMatchingEventsFound*') {
         Registrar "Log do sistema ($HorasDeLog h)" 'OK' 'nenhum erro'
     } else {
         Registrar "Log do sistema ($HorasDeLog h)" 'ATENÇÃO' "não foi possível ler: $($_.Exception.Message)"

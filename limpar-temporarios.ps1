@@ -17,22 +17,36 @@ $pastas = @($env:TEMP)
 if ($admin) { $pastas += "$env:windir\Temp" } else { Write-Host 'Sem privilégio de administrador: C:\Windows\Temp fica de fora.' -ForegroundColor Yellow }
 
 $limite = (Get-Date).AddDays(-$Dias)
-$liberado = 0; $apagados = 0; $pulados = 0
+$liberado = 0; $apagados = 0; $emUso = 0; $falhas = 0; $recusados = 0; $semAcesso = 0
 foreach ($pasta in $pastas) {
-    if (-not (Test-Path $pasta)) { continue }
-    $arquivos = Get-ChildItem $pasta -Recurse -File -Force -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -lt $limite }
+    if (-not (Test-Path -LiteralPath $pasta)) { continue }
+    # Subpastas sem permissão não interrompem a varredura, mas entram na contagem do resumo.
+    $errosLeitura = $null
+    $arquivos = Get-ChildItem -LiteralPath $pasta -Recurse -File -Force -ErrorAction SilentlyContinue -ErrorVariable errosLeitura |
+        Where-Object { $_.LastWriteTime -lt $limite }
+    $semAcesso += @($errosLeitura).Count
     foreach ($a in $arquivos) {
         if ($PSCmdlet.ShouldProcess($a.FullName, 'Apagar')) {
             try {
-                Remove-Item $a.FullName -Force -ErrorAction Stop
+                # -LiteralPath: com -Path, colchetes no nome ("setup[1].tmp") viram curinga.
+                Remove-Item -LiteralPath $a.FullName -Force -ErrorAction Stop
                 $liberado += $a.Length; $apagados++
+            } catch [System.IO.IOException] {
+                $emUso++   # aberto por outro programa: fica para a próxima
             } catch {
-                $pulados++   # em uso por outro programa: fica para a próxima
+                $falhas++
+                Write-Warning "$($a.FullName): $($_.Exception.Message)"
             }
-        } else {
+        } elseif ($WhatIfPreference) {
             $liberado += $a.Length; $apagados++   # -WhatIf: conta o que seria apagado
+        } else {
+            $recusados++   # -Confirm respondido com "Não"
         }
     }
 }
 $verbo = if ($WhatIfPreference) { 'seriam apagados' } else { 'apagados' }
-'{0} arquivo(s) {1}, {2:N1} MB liberados. {3} em uso e pulados.' -f $apagados, $verbo, ($liberado / 1MB), $pulados
+'{0} arquivo(s) {1}, {2:N1} MB liberados.' -f $apagados, $verbo, ($liberado / 1MB)
+if ($emUso) { "$emUso em uso e pulados." }
+if ($recusados) { "$recusados não confirmados." }
+if ($falhas) { "$falhas não apagados por erro (veja os avisos acima)." }
+if ($semAcesso) { "$semAcesso pasta(s) ou arquivo(s) sem permissão de leitura, fora da contagem." }

@@ -22,9 +22,12 @@ $redes = Get-CimInstance Win32_NetworkAdapterConfiguration -Filter 'IPEnabled=Tr
 
 # Programas instalados ficam no registro (64 e 32 bits). Win32_Product é evitado de propósito:
 # consultar essa classe dispara a verificação de todos os pacotes MSI e é muito lenta.
+# HKCU pega o que foi instalado só para o usuário (VS Code, Teams, Zoom e outros).
 $chaves = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
-          'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
-$programas = Get-ItemProperty $chaves -ErrorAction SilentlyContinue |
+          'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*',
+          'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*'
+$errosRegistro = $null
+$programas = Get-ItemProperty $chaves -ErrorAction SilentlyContinue -ErrorVariable errosRegistro |
     Where-Object { $_.DisplayName -and -not $_.SystemComponent } |
     Sort-Object DisplayName -Unique |
     Select-Object DisplayName, DisplayVersion, Publisher
@@ -69,7 +72,7 @@ tr.alerta td{background:#fde8e8}
 <h2>Geral</h2><table>$geral</table>
 <h2>Discos</h2><table><tr><th>Unidade</th><th>Tamanho</th><th>Livre</th><th>% livre</th></tr>$($linhasDisco -join '')</table>
 <h2>Rede</h2><table><tr><th>Adaptador</th><th>IP</th><th>MAC</th><th>Gateway</th></tr>$($linhasRede -join '')</table>
-<h2>Programas instalados ($(@($programas).Count))</h2><table><tr><th>Nome</th><th>Versão</th><th>Fabricante</th></tr>$($linhasProg -join '')</table>
+<h2>Programas instalados ($(@($programas).Count))</h2>$(if (@($errosRegistro).Count) { "<p>$(@($errosRegistro).Count) registro(s) de programa não puderam ser lidos e ficaram fora da lista.</p>" })<table><tr><th>Nome</th><th>Versão</th><th>Fabricante</th></tr>$($linhasProg -join '')</table>
 </body></html>
 "@
 
