@@ -2,6 +2,8 @@
 
 Scripts PowerShell para tarefas que se repetem no atendimento de chamados. Rodam no Windows PowerShell 5.1, que já vem no Windows, e no PowerShell 7.
 
+![Checagem de saúde, limpeza em modo de simulação e inventário no terminal](docs/terminal.png)
+
 | Script | Para quê | Altera a máquina? |
 |---|---|---|
 | [`verificar-saude.ps1`](verificar-saude.ps1) | Primeiro atendimento de chamado de lentidão: disco, memória, tempo ligado, serviços parados e erros recentes no log, com OK, ATENÇÃO ou PROBLEMA | Não |
